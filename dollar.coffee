@@ -25,71 +25,79 @@ isType = (obj) ->
 		0 <= (i = Array::indexOf.call arguments, obj.constructor, 1) &&
 			arguments[i]:: == Object.getPrototypeOf obj
 
-class $Callable extends Function
-	constructor: (t) ->
-		f = () -> f.call arguments
-		Object.setPrototypeOf f, t::
+class $Callable3
+	constructor: () ->
+		f = (err, val) ->
+			assert isType1 f.g, Generator # internal error
+			try
+				{value, done} = if err?
+					f.g.throw err
+				else
+					f.g.next val
+			catch e
+				throw e unless f.cb?
+				f.done = true
+				f.cb e
+				return
+			if done
+				if f.cb?
+					f.done = true
+					f.cb null, value
+				return
+			unless typeof value == 'function'
+				console.log "Missing dollar while using yield."
+				f new Error "Missing dollar while using yield."
+				return
+			if isType1 value, GeneratorFunction
+				value = $ value
+			try
+				value f
+			catch e
+				throw e if f.done
+				f e
+			return
 		return f
 
-class $Generator extends Function
-	call: ([err, val]) ->
-		assert isType1 @g, Generator # internal error
-		try
-			{value, done} = if err? then @g.throw err else @g.next val
-		catch e
-			@return e
-			return
-		if done
-			@return null, value
-			return
-		unless typeof value == 'function' && isType1 value, $
-			@call new Error "Missing dollar while using yield."
-			return
-		try
-			value @
-		catch e
-			throw e if @done
-			@call e
-		return
-
-	return: (e, v) ->
-		if @cb
-			@done = true
-			@cb e, v
-		else if e?
-			throw e
+delay = (duration, cb) -> setTimeout cb, duration
 
 class $ extends Function
-	constructor: (fn) ->
-		unless typeof fn == 'function'
+	constructor: () ->
+		unless typeof arguments[0] == 'function'
 			throw new Error 'The first parameter must be callable.'
-		unless isType fn, Function, GeneratorFunction
+		unless isType arguments[0], Function, GeneratorFunction, $
 			throw new Error 'The first parameter must be a Function or a GeneratorFunction.'
-		re = new $Callable $
-		re.args1 = arguments
-		re.exec = re.new if isType1 @, $
-		return re
-
-	new: (args) ->
-		new (Function::bind.apply args[0], args)
-
-	exec: (args) ->
-		Function::call.apply args[0], args
-
-	call: (args2) ->
-		args = Array @args1.length + args2.length
-		args[i] = @args1[i] for v, i in @args1
-		args[@args1.length + i] = args2[i] for v, i in args2
-		if args[0].constructor == GeneratorFunction
-			fn = new $Callable $Generator
-			if fn.cb = args2[args2.length - 1]
-				unless typeof fn.cb == 'function'
-					throw new Error 'The last parameter must be a callable callback.'
-				args.length--
-			fn.g = @exec args
+		if arguments.length == 2 && arguments[0] == setTimeout
+			arguments[0] = delay
+		args1 = Array::slice.call arguments, 0
+		#args1 = arguments
+		if isType1 @, $
+			f = () ->
+				args = Array args1.length + arguments.length
+				args[i] = args1[i] for v, i in args1
+				args[args1.length + i] = arguments[i] for v, i in arguments
+				unless args[0].constructor == GeneratorFunction
+					new (Function::bind.apply args[0], args)
+					return
+				fn = do $Callable3
+				args.length-- if typeof (fn.cb = arguments[arguments.length - 1]) == 'function'
+				fn.g = new (Function::bind.apply args[0], args)
+				do fn
+				return
+			Object.setPrototypeOf f, $::
+			return f
+		f = () ->
+			args = Array args1.length + arguments.length
+			args[i] = args1[i] for v, i in args1
+			args[args1.length + i] = arguments[i] for v, i in arguments
+			unless args[0].constructor == GeneratorFunction
+				Function::call.apply args[0], args
+				return
+			fn = do $Callable3
+			args.length-- if typeof (fn.cb = arguments[arguments.length - 1]) == 'function'
+			fn.g = Function::call.apply args[0], args
 			do fn
 			return
-		@exec args
-		return
+		Object.setPrototypeOf f, $::
+		return f
 
-module.exports = {$}
+module.exports = $

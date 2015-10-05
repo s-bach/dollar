@@ -1,0 +1,9 @@
+{
+  "name": "$",
+  "version": "-1.0.0",
+  "description": "..",
+  "main": "dollar.coffee",
+  "dependencies": {
+    "coffee-script": "^1.8.0"
+  }
+}

@@ -94,7 +94,10 @@ class $ extends Function
 				return
 			fn = do $Callable3
 			args.length-- if typeof (fn.cb = arguments[arguments.length - 1]) == 'function'
-			fn.g = Function::call.apply args[0], args
+			fn.g = if @constructor == f
+				new (Function::bind.apply args[0], args)
+			else
+				Function::call.apply args[0], args
 			do fn
 			return
 		Object.setPrototypeOf f, $::

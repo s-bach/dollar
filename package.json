@@ -4,6 +4,6 @@
   "description": "..",
   "main": "dollar.coffee",
   "dependencies": {
-    "coffee-script": "^1.8.0"
+    "coffee-script": "^1.10.0"
   }
 }

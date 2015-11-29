@@ -33,7 +33,10 @@ class $Callable3
 				{value, done} = if err?
 					f.g.throw err
 				else
-					f.g.next val
+					if val?
+						f.g.next val
+					else
+						f.g.next f.re
 			catch e
 				throw e unless f.cb?
 				f.done = true
@@ -51,7 +54,7 @@ class $Callable3
 			if isType1 value, GeneratorFunction
 				value = $ value
 			try
-				value f
+				f.re = value f
 			catch e
 				throw e if f.done
 				f e
@@ -76,8 +79,7 @@ class $ extends Function
 				args[i] = args1[i] for v, i in args1
 				args[args1.length + i] = arguments[i] for v, i in arguments
 				unless args[0].constructor == GeneratorFunction
-					new (Function::bind.apply args[0], args)
-					return
+					return new (Function::bind.apply args[0], args)
 				fn = do $Callable3
 				args.length-- if typeof (fn.cb = arguments[arguments.length - 1]) == 'function'
 				fn.g = new (Function::bind.apply args[0], args)

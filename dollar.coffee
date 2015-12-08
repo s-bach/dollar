@@ -43,7 +43,7 @@ class $Callable3
 				f.cb e
 				return
 			if done
-				if f.cb?
+				if typeof f.cb == 'function'
 					f.done = true
 					f.cb null, value
 				return

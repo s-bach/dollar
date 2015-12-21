@@ -40,8 +40,7 @@ Error.prepareStackTrace = do () ->
 		if error.constructor == PromiseError
 			assert error.f == structuredStackTrace[0].getFunction()
 			error.file = structuredStackTrace[0].getFileName()
-			assert error.file == structuredStackTrace[1].getFileName()
-			structuredStackTrace = structuredStackTrace.slice 2
+			structuredStackTrace = structuredStackTrace.slice 1
 		prepareStackTrace error, structuredStackTrace
 
 class $Callable3

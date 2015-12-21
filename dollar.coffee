@@ -31,8 +31,14 @@ class PromiseError
 	toString: () ->
 		@file + ':42\n          throw promiseError;\n          ^\nPromiseError: Promise was rejected! Cause: ' + @message
 	print: (@message) ->
-		setImmediate () =>
-			process.stderr.write '\n' + @stack + '\n' unless process.emit 'uncaughtException', @
+		promiseError = if @message instanceof Error
+			@message.toString = () -> @message
+			@message
+		else
+			@
+		setImmediate () ->
+			throw promiseError
+			process.stderr.write '\n' + promiseError.stack + '\n' unless process.emit 'uncaughtException', promiseError
 
 Error.prepareStackTrace = do () ->
 	prepareStackTrace = Error.prepareStackTrace

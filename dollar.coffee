@@ -25,6 +25,25 @@ isType = (obj) ->
 		0 <= (i = Array::indexOf.call arguments, obj.constructor, 1) &&
 			arguments[i]:: == Object.getPrototypeOf obj
 
+class PromiseError
+	constructor: (@f) ->
+		Error.captureStackTrace @, PromiseError
+	toString: () ->
+		@file + ':42\n          throw promiseError;\n          ^\nPromiseError: Promise was rejected! Cause: ' + @message
+	print: (@message) ->
+		setImmediate () =>
+			process.stderr.write '\n' + @stack + '\n' unless process.emit 'uncaughtException', @
+
+Error.prepareStackTrace = do () ->
+	prepareStackTrace = Error.prepareStackTrace
+	(error, structuredStackTrace) ->
+		if error.constructor == PromiseError
+			assert error.f == structuredStackTrace[0].getFunction()
+			error.file = structuredStackTrace[0].getFileName()
+			assert error.file == structuredStackTrace[1].getFileName()
+			structuredStackTrace = structuredStackTrace.slice 2
+		prepareStackTrace error, structuredStackTrace
+
 class $Callable3
 	constructor: () ->
 		f = (err, val) ->
@@ -48,6 +67,41 @@ class $Callable3
 					f.cb null, value
 				return
 			unless typeof value == 'function'
+				# Promise support
+				if typeof value.then == 'function'
+					promiseError = new PromiseError f
+					promiseDone = false
+					fulfill = (val) ->
+						return if promiseDone
+						promiseDone = true
+						try
+							try
+								f.g.next val
+							catch e
+								throw e unless f.cb?
+								f.done = true
+								f.cb e
+						catch e
+							f.done = true
+							promiseError.print e
+					reject = (err) ->
+						return if promiseDone
+						promiseDone = true
+						try
+							try
+								f.g.throw err
+							catch e
+								throw e unless f.cb?
+								f.done = true
+								f.cb e
+						catch e
+							f.done = true
+							promiseError.print e
+					try
+						value.then fulfill, reject
+					catch e
+						reject e
+					return
 				console.log "Missing dollar while using yield."
 				f new Error "Missing dollar while using yield."
 				return
@@ -57,7 +111,7 @@ class $Callable3
 				f.re = value f
 			catch e
 				throw e if f.done
-				f e
+				f e # BUG: this is wrong when throwing a undefined value
 			return
 		return f
 

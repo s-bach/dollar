@@ -51,21 +51,7 @@ Error.prepareStackTrace = do () ->
 
 class $Callable3
 	constructor: () ->
-		f = (err, val) ->
-			assert isType1 f.g, Generator # internal error
-			try
-				{value, done} = if err?
-					f.g.throw err
-				else
-					if val?
-						f.g.next val
-					else
-						f.g.next f.re
-			catch e
-				throw e unless f.cb?
-				f.done = true
-				f.cb e
-				return
+		g = (value, done) ->
 			if done
 				if typeof f.cb == 'function'
 					f.done = true
@@ -74,6 +60,7 @@ class $Callable3
 			unless typeof value == 'function'
 				# Promise support
 				if typeof value.then == 'function'
+
 					promiseError = new PromiseError f
 					promiseDone = false
 					fulfill = (val) ->
@@ -81,11 +68,12 @@ class $Callable3
 						promiseDone = true
 						try
 							try
-								f.g.next val
+								{value, done} = f.g.next val
 							catch e
 								throw e unless f.cb?
 								f.done = true
 								f.cb e
+							g value, done
 						catch e
 							f.done = true
 							promiseError.print e
@@ -118,6 +106,22 @@ class $Callable3
 				throw e if f.done
 				f e # BUG: this is wrong when throwing a undefined value
 			return
+		f = (err, val) ->
+			assert isType1 f.g, Generator # internal error
+			try
+				{value, done} = if err?
+					f.g.throw err
+				else
+					if val?
+						f.g.next val
+					else
+						f.g.next f.re
+			catch e
+				throw e unless f.cb?
+				f.done = true
+				f.cb e
+				return
+			g value, done
 		return f
 
 delay = (duration, cb) -> setTimeout cb, duration
@@ -140,7 +144,9 @@ class $ extends Function
 				unless args[0].constructor == GeneratorFunction
 					return new (Function::bind.apply args[0], args)
 				fn = do $Callable3
-				args.length-- if typeof (fn.cb = arguments[arguments.length - 1]) == 'function'
+				if typeof arguments[arguments.length - 1] == 'function'
+					fn.cb = arguments[arguments.length - 1]
+					args.length--
 				fn.g = new (Function::bind.apply args[0], args)
 				do fn
 				return
@@ -154,7 +160,9 @@ class $ extends Function
 				Function::call.apply args[0], args
 				return
 			fn = do $Callable3
-			args.length-- if typeof (fn.cb = arguments[arguments.length - 1]) == 'function'
+			if typeof arguments[arguments.length - 1] == 'function'
+				fn.cb = arguments[arguments.length - 1]
+				args.length--
 			fn.g = if @constructor == f
 				new (Function::bind.apply args[0], args)
 			else

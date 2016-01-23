@@ -556,6 +556,46 @@ class TestRunner
 			setTimeout () ->
 				do fulfill if ok
 			, 100
+
+		# test 21
+		# throw undefined value
+		@tests.push new Test 'throw undefined value', (fulfill, reject, console) ->
+			($ () -> yield () -> throw undefined) (err, val) -> do if err == undefined then fulfill else reject
+
+		# test 22
+		# promise try catch throw
+		@tests.push new Test 'promise try catch throw', (fulfill, reject, console) ->
+			do $ () ->
+				try
+					console.log 'yield the first promise'
+					yield new Promise (fulfill, reject) -> do reject
+				catch err
+					console.log 'catching reject'
+				console.log 'yield the second promise'
+				yield new Promise (fulfill, reject) -> do fulfill
+				do fulfill
+
+		# test 22
+		# promise try catch throw
+		@tests.push new Test 'other promise try catch throw', (fulfill, reject, console) ->
+			f = $ () ->
+				yield new Promise (fulfill, reject) -> reject 'jo!'
+			f (err, val) ->
+				assert err == 'jo!'
+				do fulfill
+
+		# test 23
+		# promise try catch throw
+		@tests.push new Test 'other promise try catch throw', (fulfill, reject, console) ->
+			f = $ () ->
+				try
+					yield new Promise (fulfill, reject) -> reject 'jo!'
+				catch e
+					throw 'jo'
+			f (err, val) ->
+				assert err == 'jo'
+				do fulfill
+
 		@state = 'pending'
 	runSync: () ->
 		if @state != 'pending'
@@ -591,8 +631,5 @@ class TestRunner
 		re.push (do test.inspect for test in @tests).join '\n'# '\n  -------------------------------------------------- \n'
 		re.push ' +----------------------------------------+---------+ '
 		re.join '\n'
-			
-
-
 
 new TestRunner().runSync()

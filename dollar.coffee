@@ -16,15 +16,6 @@ assert = require 'assert'
 GeneratorFunction = (->yield 0).constructor if !GeneratorFunction?
 Generator = (do->yield 0).constructor if !Generator?
 
-isType1 = (obj) ->
-	obj &&
-		0 <= Array::indexOf.call arguments, obj.constructor, 1
-
-isType = (obj) ->
-	obj &&
-		0 <= (i = Array::indexOf.call arguments, obj.constructor, 1) &&
-			arguments[i]:: == Object.getPrototypeOf obj
-
 class PromiseError
 	constructor: (@f) ->
 		Error.captureStackTrace @, PromiseError
@@ -60,7 +51,6 @@ class $Callable3
 			unless typeof value == 'function'
 				# Promise support
 				if typeof value.then == 'function'
-
 					promiseError = new PromiseError f
 					promiseDone = false
 					fulfill = (val) ->
@@ -73,6 +63,7 @@ class $Callable3
 								throw e unless f.cb?
 								f.done = true
 								f.cb e
+								return
 							g value, done
 						catch e
 							f.done = true
@@ -82,11 +73,13 @@ class $Callable3
 						promiseDone = true
 						try
 							try
-								f.g.throw err
+								{value, done} = f.g.throw err
 							catch e
 								throw e unless f.cb?
 								f.done = true
 								f.cb e
+								return
+							g value, done
 						catch e
 							f.done = true
 							promiseError.print e
@@ -98,16 +91,22 @@ class $Callable3
 				console.log "Missing dollar while using yield."
 				f new Error "Missing dollar while using yield."
 				return
-			if isType1 value, GeneratorFunction
+			if value.constructor == GeneratorFunction
 				value = $ value
 			try
 				f.re = value f
-			catch e
-				throw e if f.done
-				f e # BUG: this is wrong when throwing a undefined value
+			catch err
+				throw err if f.done
+				try
+					{value, done} = f.g.throw err
+				catch e
+					throw e unless f.cb?
+					f.done = true
+					f.cb e
+					return
+				g value, done
 			return
 		f = (err, val) ->
-			assert isType1 f.g, Generator # internal error
 			try
 				{value, done} = if err?
 					f.g.throw err
@@ -128,19 +127,21 @@ delay = (duration, cb) -> setTimeout cb, duration
 
 class $ extends Function
 	constructor: () ->
-		unless typeof arguments[0] == 'function'
+		args1 = arguments
+		unless typeof args1[0] == 'function'
 			throw new Error 'The first parameter must be callable.'
-		unless isType arguments[0], Function, GeneratorFunction, $
+		proto = Object.getPrototypeOf args1[0]
+		unless args1[0].constructor == Function && Function:: == proto || args1[0].constructor == GeneratorFunction && GeneratorFunction:: == proto
 			throw new Error 'The first parameter must be a Function or a GeneratorFunction.'
-		if arguments.length == 2 && arguments[0] == setTimeout
-			arguments[0] = delay
+		if args1.length == 2 && args1[0] == setTimeout
+			args1[0] = delay
 		args1 = Array::slice.call arguments, 0
 		#args1 = arguments
-		if isType1 @, $
+		if @.constructor == $
 			f = () ->
 				args = Array args1.length + arguments.length
-				args[i] = args1[i] for v, i in args1
-				args[args1.length + i] = arguments[i] for v, i in arguments
+				args[i] = v for v, i in args1
+				args[args1.length + i] = v for v, i in arguments
 				unless args[0].constructor == GeneratorFunction
 					return new (Function::bind.apply args[0], args)
 				fn = do $Callable3
@@ -154,8 +155,8 @@ class $ extends Function
 			return f
 		f = () ->
 			args = Array args1.length + arguments.length
-			args[i] = args1[i] for v, i in args1
-			args[args1.length + i] = arguments[i] for v, i in arguments
+			args[i] = v for v, i in args1
+			args[args1.length + i] = v for v, i in arguments
 			unless args[0].constructor == GeneratorFunction
 				Function::call.apply args[0], args
 				return

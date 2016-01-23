@@ -364,10 +364,6 @@ class TestRunner
 				yield (cb) -> do cb
 				ok = true
 			assert ok
-			ok = false
-			do $ () ->
-				yield $ setTimeout, 1
-				ok = true
 			do $ () ->
 				yield $ (cb) ->
 					setTimeout cb, 2

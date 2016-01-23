@@ -1,18 +1,11 @@
-'''#############################################################v1''
+'''#############################################################v4''
 #
 #                     The dollar function ($)
 #                       by Christoph Bach (C)
 #
-# Usage:
-	 do $ () ->
-		 console.log 'Wer a sagt muss auch...'
-		 yield $ (cb) -> setTimeout cb, 1000
-		 console.log '... b sagen!'
-#
 ''###############################################################'''
 
 assert = require 'assert'
-
 GeneratorFunction = (->yield 0).constructor if !GeneratorFunction?
 Generator = (do->yield 0).constructor if !Generator?
 
@@ -62,34 +55,33 @@ c = () ->
 	f = (err, val) -> g if err? then () -> f.g.throw err else () -> f.g.next val || f.re
 
 $ = () ->
-	args1 = Array::slice.call arguments, 0
-	#args1 = arguments
-	throw new Error 'The first parameter must be callable.' if typeof args1[0] != 'function'
-	throw new Error 'The first parameter must be a Function or a GeneratorFunction.' unless args1[0].constructor in [Function, GeneratorFunction]
-	a = (args2) ->
-		args = Array args1.length + args2.length
-		args[i] = v for v, i in args1
-		args[args1.length + i] = v for v, i in args2
-		args
-	g = (args2, g) ->
-		args = a args2
-		fn = do c
-		if typeof args2[args2.length - 1] == 'function'
-			fn.cb = args2[args2.length - 1]
-			args.length--
-		fn.g = g args
-		do fn
-		return
-	if args1[0].constructor == GeneratorFunction
-		return (() -> g arguments, (args) -> new (Function::bind.apply args[0], args)) if @.constructor == arguments.callee
-		return () -> g arguments, if @constructor == arguments.callee then (args) -> new (Function::bind.apply args[0], args) else (args) -> Function::call.apply args[0], args
+	a1 = Array::slice.call arguments, 0
+	#a1 = arguments
+	throw new Error 'The first parameter must be callable.' if typeof a1[0] != 'function'
+	throw new Error 'The first parameter must be a Function or a GeneratorFunction.' unless a1[0].constructor in [Function, GeneratorFunction]
+	g = (a2) ->
+		a = Array a1.length + a2.length
+		a[i] = v for v, i in a1
+		a[a1.length + i] = v for v, i in a2
+		a
+	if a1[0].constructor == GeneratorFunction
+		assert @.constructor != arguments.callee
+		return () ->
+			a = g arguments
+			f = do c
+			if typeof arguments[arguments.length - 1] == 'function'
+				f.cb = arguments[arguments.length - 1]
+				a.length--
+			f.g = a[0].call this, a.slice(1)...
+			do f
+			return
 	if @.constructor == arguments.callee
 		return () ->
-			args = a arguments
-			new (Function::bind.apply args[0], args)
+			a = g arguments
+			new (Function::bind.apply a[0], a)
 	() ->
-		args = a arguments
-		Function::call.apply args[0], args
+		a = g arguments
+		Function::call.apply a[0], a
 		return
 
 module.exports = $

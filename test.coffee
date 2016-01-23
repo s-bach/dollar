@@ -2,7 +2,6 @@ $ = require './dollar'
 EventEmitter = require 'events'
 {$Promise} = require './dollar-promise'
 assert = require 'assert'
-{getStack} = require './call-site-utils'
 
 String::toTitleCase = ->
 	i = undefined
@@ -61,6 +60,7 @@ class Test extends EventEmitter
 		if @state != 'running'
 			@errors.push new Error 'Warning: State was ' + @state + ' and not running.'
 		else
+			@errors.push new Error 'reject'
 			@done true
 	done: (err) ->
 		if err
@@ -261,7 +261,7 @@ class TestRunner
 				do fulfill if count == 0
 			catches = 0
 			class A
-				constructor: () ->
+				constructor: $ () ->
 					try
 						yield throw 'e'
 					catch e
@@ -381,46 +381,17 @@ class TestRunner
 			assert ok
 			do fulfill
 
-		# test 11
-		# a better constructor test
-		@tests.push new Test 'a better constructor test', (fulfill, reject, console) ->
-			f = (cb) ->
-				cb.call null, null, 'ok'
-			g_count = 0
-			class X
-				constructor: () ->
-					re = yield $ f
-					assert re == 'ok'
-					return @
-				g: () ->
-					g_count++
-
-			X = $ X
-
-			# ok now we start instantiation tests
-			new X (err, inst) ->
-				assert !err?
-				assert typeof inst == 'object'
-				do inst.g
-
-			new X (err, inst) ->
-				assert !err?
-				assert typeof inst == 'object'
-				do inst.g
-			assert g_count == 2
-			do fulfill
-
 		# test 12
 		# a even better constructor test
 		@tests.push new Test 'a even better constructor test', (fulfill, reject, console) ->
 			class X
-				constructor: (cb) ->
+				constructor: $ (cb) ->
 					setTimeout cb, 10
 
 			do $ () ->
 				x = yield new $ X
-				assert x instanceof X
-				do fulfill
+				return do fulfill if x instanceof X
+				do reject 
 
 		# test 13
 		# yield a Promise
@@ -561,7 +532,7 @@ class TestRunner
 		# test 22
 		# promise try catch throw
 		@tests.push new Test 'promise try catch throw', (fulfill, reject, console) ->
-			do $ () ->
+			r = do $ () ->
 				try
 					console.log 'yield the first promise'
 					yield new Promise (fulfill, reject) -> do reject
@@ -569,6 +540,7 @@ class TestRunner
 					console.log 'catching reject'
 				console.log 'yield the second promise'
 				yield new Promise (fulfill, reject) -> do fulfill
+				assert r == undefined
 				do fulfill
 
 		# test 22
@@ -591,6 +563,33 @@ class TestRunner
 			f (err, val) ->
 				assert err == 'jo'
 				do fulfill
+
+		# test 24
+		# a better constructor test
+		@tests.push new Test 'a better constructor test', (fulfill, reject, console) ->
+			class X
+				constructor: $ () ->
+					yield (cb) ->
+						setTimeout cb, 10
+					return @
+				x: () ->
+			count = 2
+			# ok now we start instantiation tests
+			val = null
+			q = (new $ X) (err, v) ->
+				val = v
+				assert val instanceof X
+				assert val.constructor == X
+				assert val.x == X::x
+				assert !q? || q == val
+				count--
+				do fulfill if count == 0
+			assert q instanceof X
+			assert q.constructor == X
+			assert q.x == X::x
+			assert !val? || q == val
+			count--
+			do fulfill if count == 0
 
 		@state = 'pending'
 	runSync: () ->
@@ -618,9 +617,9 @@ class TestRunner
 							console.log error.stack
 				else
 					pos++
-					console.log = () => @tests[pos].log.push [arguments...]
+					#console.log = () => @tests[pos].log.push [arguments...]
 					@tests[pos].run()
-		console.log = () => @tests[pos].log.push [arguments...]
+		#console.log = () => @tests[pos].log.push [arguments...]
 		@tests[pos].run()
 	inspect: () ->
 		re = [' +----------------------------------------+---------+ ']

@@ -184,6 +184,7 @@ class TestRunner
 		@tests.push new Test 'new', (fulfill, reject, console) ->
 			class A
 				constructor: (a, b, c) ->
+					console.log a + b + c
 					assert a + b + c == 'abc'
 					assert @__proto__ == A::
 					assert @ instanceof A
@@ -213,11 +214,13 @@ class TestRunner
 					b = yield new $ B, 'a', 'b', 'c'
 					assert b instanceof B
 					assert b.constructor == B::constructor
+					ok = true
 				catch e
 					console.log e.stack
-				ok = true
-			assert ok
-			do fulfill
+			if ok
+				do fulfill
+			else
+				do reject
 
 		# test 6
 		# errors! try-_throw-_catch->  !

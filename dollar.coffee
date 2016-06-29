@@ -7,7 +7,6 @@
 
 assert = require 'assert'
 GeneratorFunction = (->yield 0).constructor if !GeneratorFunction?
-Generator = (do->yield 0).constructor if !Generator?
 
 c = () ->
 	g = (qq) ->
@@ -65,7 +64,16 @@ $ = () ->
 		a[a1.length + i] = v for v, i in a2
 		a
 	if a1[0].constructor == GeneratorFunction
-		assert @.constructor != arguments.callee
+		if @.constructor == arguments.callee
+			return () ->
+				a = g arguments
+				f = do c
+				if typeof arguments[arguments.length - 1] == 'function'
+					f.cb = arguments[arguments.length - 1]
+					a.length--
+				f.g = new (Function::bind.apply a[0], a)
+				do f
+				return
 		return () ->
 			a = g arguments
 			f = do c

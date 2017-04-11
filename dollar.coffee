@@ -51,7 +51,7 @@ c = () ->
 			throw err if f.done
 			g () -> f.g.throw err
 		return
-	f = (err, val) -> g if err? then () -> f.g.throw err else () -> f.g.next val || f.re
+	f = (err, val) -> g if err? then () -> f.g.throw err else () -> f.g.next (if val == undefined then f.re else val)
 
 $ = () ->
 	a1 = Array::slice.call arguments, 0

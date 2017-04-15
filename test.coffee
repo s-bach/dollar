@@ -183,19 +183,21 @@ class TestRunner
 		# new
 		@tests.push new Test 'new', (fulfill, reject, console) ->
 			class A
+				test: '1'
 				constructor: (a, b, c) ->
-					console.log a + b + c
 					assert a + b + c == 'abc'
 					assert @__proto__ == A::
 					assert @ instanceof A
 					yield $ (cb) -> do cb
-					return @ # Seems to be a bug that this return is needed...
 			class B
 				constructor: (a, b, c, cb) ->
 					assert a + b + c == 'abc'
 					assert @__proto__ == B::
 					assert @ instanceof B
 					cb null, @
+			class C
+				constructor: (cb) ->
+					cb null, undefined
 			ok = false
 			do $ () ->
 				try
@@ -214,6 +216,11 @@ class TestRunner
 					b = yield new $ B, 'a', 'b', 'c'
 					assert b instanceof B
 					assert b.constructor == B::constructor
+
+					c = yield new $ C
+					assert c instanceof C
+					assert c.constructor == C::constructor
+
 					ok = true
 				catch e
 					console.log e.stack

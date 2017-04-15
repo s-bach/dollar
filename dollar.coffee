@@ -20,7 +20,7 @@ c = () ->
 		if done
 			if typeof f.cb == 'function'
 				f.done = true
-				f.cb null, value
+				f.cb null, (if value == undefined then f.obj else value)
 			return
 		unless typeof value == 'function'
 			if typeof value.then == 'function' # Promise support
@@ -64,29 +64,34 @@ $ = () ->
 		a[a1.length + i] = v for v, i in a2
 		a
 	if a1[0].constructor == GeneratorFunction
-		if @.constructor == arguments.callee
+		if @constructor == arguments.callee
 			return () ->
 				a = g arguments
 				f = do c
 				if typeof arguments[arguments.length - 1] == 'function'
 					f.cb = arguments[arguments.length - 1]
 					a.length--
-				f.g = new (Function::bind.apply a[0], a)
+				f.obj = Object.create a[0].prototype
+				f.g = a[0].apply f.obj, a.slice 1
 				do f
-				return
+				return f.obj
 		return () ->
 			a = g arguments
 			f = do c
 			if typeof arguments[arguments.length - 1] == 'function'
 				f.cb = arguments[arguments.length - 1]
 				a.length--
-			f.g = a[0].call this, a.slice(1)...
+			f.g = a[0].apply this, a.slice 1
 			do f
 			return
 	if @.constructor == arguments.callee
 		return () ->
 			a = g arguments
-			new (Function::bind.apply a[0], a)
+			obj = Object.create a[0].prototype
+			old_cb = arguments[arguments.length - 1]
+			a[a.length - 1] = (err, re) -> old_cb.call this, err, if !err? && re == undefined then obj else re if typeof old_cb == 'function'
+			a[0].apply obj, a.slice 1
+			return obj
 	() ->
 		a = g arguments
 		Function::call.apply a[0], a

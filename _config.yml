@@ -1,0 +1,1 @@
+include             : [".well-known", ".well-known/acme-challenge", ".well-known/acme-challenge/test.txt"]

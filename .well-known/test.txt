@@ -1,1 +1,6 @@
- ho
+---
+title: This is my title
+layout: post
+---
+
+ho
